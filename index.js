@@ -1,12 +1,13 @@
-var AudioContext = window.AudioContext || window.webkitAudioContext
+var AudioContext = window.AudioContext || window.webkitAudioContext;
+var ac = new AudioContext();
 
-function createWorker (fn) {
+function createWorker(fn) {
   var js = fn
     .toString()
     .replace(/^function\s*\(\)\s*{/, '')
-    .replace(/}$/, '')
-  var blob = new Blob([js])
-  return new Worker(URL.createObjectURL(blob))
+    .replace(/}$/, '');
+  var blob = new Blob([js]);
+  return new Worker(URL.createObjectURL(blob));
 }
 
 /**
@@ -21,31 +22,31 @@ function createWorker (fn) {
  *
  * @class
  */
-function MediaRecorder (stream) {
+function MediaRecorder(stream) {
   /**
    * The `MediaStream` passed into the constructor.
    * @type {MediaStream}
    */
-  this.stream = stream
+  this.stream = stream;
 
   /**
    * The current state of recording process.
    * @type {"inactive"|"recording"|"paused"}
    */
-  this.state = 'inactive'
+  this.state = 'inactive';
 
-  this.em = document.createDocumentFragment()
-  this.encoder = createWorker(MediaRecorder.encoder)
+  this.em = document.createDocumentFragment();
+  this.encoder = createWorker(MediaRecorder.encoder);
 
-  var recorder = this
-  this.encoder.addEventListener('message', function (e) {
-    var event = new Event('dataavailable')
-    event.data = new Blob([e.data], { type: recorder.mimeType })
-    recorder.em.dispatchEvent(event)
+  var recorder = this;
+  this.encoder.addEventListener('message', function(e) {
+    var event = new Event('dataavailable');
+    event.data = new Blob([e.data], { type: recorder.mimeType });
+    recorder.em.dispatchEvent(event);
     if (recorder.state === 'inactive') {
-      recorder.em.dispatchEvent(new Event('stop'))
+      recorder.em.dispatchEvent(new Event('stop'));
     }
-  })
+  });
 }
 
 MediaRecorder.prototype = {
@@ -69,32 +70,33 @@ MediaRecorder.prototype = {
    *   recorder.start()
    * })
    */
-  start: function start (timeslice) {
+  start: function start(timeslice) {
     if (this.state === 'inactive') {
-      this.state = 'recording'
+      this.state = 'recording';
 
-      this.context = new AudioContext()
-      var input = this.context.createMediaStreamSource(this.stream)
-      var processor = this.context.createScriptProcessor(2048, 1, 1)
+      this.context = ac;
+      var input = this.context.createMediaStreamSource(this.stream);
+      var processor = this.context.createScriptProcessor(2048, 1, 1);
 
-      var recorder = this
-      processor.onaudioprocess = function (e) {
+      var recorder = this;
+      processor.onaudioprocess = function(e) {
         if (recorder.state === 'recording') {
           recorder.encoder.postMessage([
-            'encode', e.inputBuffer.getChannelData(0)
-          ])
+            'encode',
+            e.inputBuffer.getChannelData(0),
+          ]);
         }
-      }
+      };
 
-      input.connect(processor)
-      processor.connect(this.context.destination)
+      input.connect(processor);
+      processor.connect(this.context.destination);
 
-      this.em.dispatchEvent(new Event('start'))
+      this.em.dispatchEvent(new Event('start'));
 
       if (timeslice) {
-        this.slicing = setInterval(function () {
-          if (recorder.state === 'recording') recorder.requestData()
-        }, timeslice)
+        this.slicing = setInterval(function() {
+          if (recorder.state === 'recording') recorder.requestData();
+        }, timeslice);
       }
     }
   },
@@ -109,11 +111,11 @@ MediaRecorder.prototype = {
    *   recorder.stop()
    * })
    */
-  stop: function stop () {
+  stop: function stop() {
     if (this.state !== 'inactive') {
-      this.requestData()
-      this.state = 'inactive'
-      clearInterval(this.slicing)
+      this.requestData();
+      this.state = 'inactive';
+      clearInterval(this.slicing);
     }
   },
 
@@ -127,10 +129,10 @@ MediaRecorder.prototype = {
    *   recorder.pause()
    * })
    */
-  pause: function pause () {
+  pause: function pause() {
     if (this.state === 'recording') {
-      this.state = 'paused'
-      this.em.dispatchEvent(new Event('pause'))
+      this.state = 'paused';
+      this.em.dispatchEvent(new Event('pause'));
     }
   },
 
@@ -144,10 +146,10 @@ MediaRecorder.prototype = {
    *   recorder.resume()
    * })
    */
-  resume: function resume () {
+  resume: function resume() {
     if (this.state === 'paused') {
-      this.state = 'recording'
-      this.em.dispatchEvent(new Event('resume'))
+      this.state = 'recording';
+      this.em.dispatchEvent(new Event('resume'));
     }
   },
 
@@ -161,9 +163,9 @@ MediaRecorder.prototype = {
    *   recorder.requestData()
    * })
    */
-  requestData: function requestData () {
+  requestData: function requestData() {
     if (this.state !== 'inactive') {
-      this.encoder.postMessage(['dump', this.context.sampleRate])
+      this.encoder.postMessage(['dump', this.context.sampleRate]);
     }
   },
 
@@ -180,8 +182,8 @@ MediaRecorder.prototype = {
    *   audio.src = URL.createObjectURL(e.data)
    * })
    */
-  addEventListener: function addEventListener () {
-    this.em.addEventListener.apply(this.em, arguments)
+  addEventListener: function addEventListener() {
+    this.em.addEventListener.apply(this.em, arguments);
   },
 
   /**
@@ -192,8 +194,8 @@ MediaRecorder.prototype = {
    *
    * @return {undefined}
    */
-  removeEventListener: function removeEventListener () {
-    this.em.removeEventListener.apply(this.em, arguments)
+  removeEventListener: function removeEventListener() {
+    this.em.removeEventListener.apply(this.em, arguments);
   },
 
   /**
@@ -203,10 +205,10 @@ MediaRecorder.prototype = {
    *
    * @return {boolean} Is event was no canceled by any listener.
    */
-  dispatchEvent: function dispatchEvent () {
-    this.em.dispatchEvent.apply(this.em, arguments)
-  }
-}
+  dispatchEvent: function dispatchEvent() {
+    this.em.dispatchEvent.apply(this.em, arguments);
+  },
+};
 
 /**
  * Returns `true` if the MIME type specified is one the polyfill can record.
@@ -217,9 +219,9 @@ MediaRecorder.prototype = {
  *
  * @return {boolean} `true` on `audio/wav` MIME type.
  */
-MediaRecorder.isTypeSupported = function isTypeSupported (mimeType) {
-  return /audio\/wave?/.test(mimeType)
-}
+MediaRecorder.isTypeSupported = function isTypeSupported(mimeType) {
+  return /audio\/wave?/.test(mimeType);
+};
 
 /**
  * `true` if MediaRecorder can not be polyfilled in the current browser.
@@ -230,7 +232,7 @@ MediaRecorder.isTypeSupported = function isTypeSupported (mimeType) {
  *   showWarning('Audio recording is not supported in this browser')
  * }
  */
-MediaRecorder.notSupported = !navigator.mediaDevices || !AudioContext
+MediaRecorder.notSupported = !navigator.mediaDevices || !AudioContext;
 
 /**
  * Converts RAW audio buffer to compressed audio files.
@@ -242,6 +244,6 @@ MediaRecorder.notSupported = !navigator.mediaDevices || !AudioContext
  * MediaRecorder.prototype.mimeType = 'audio/ogg'
  * MediaRecorder.encoder = oggEncoder
  */
-MediaRecorder.encoder = require('./wave-encoder')
+MediaRecorder.encoder = require('./wave-encoder');
 
-module.exports = MediaRecorder
+module.exports = MediaRecorder;
